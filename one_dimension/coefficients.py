@@ -56,6 +56,27 @@ def mu_sin(t, x):
     """
     return np.sin(x)
     
+def mu_from_paper(t, y):
+    """
+    The drift coefficient. Implementing equation 5.2 from the paper.
+    Args:
+        t (float): The current time
+        x (np.array): The previous value of the process for each path
+    """
+    x = convert_y_to_x(y)
+    sigma = 0.4
+    return 2*sigma*x/(1+x**2)**2
+
+def mu_time_dependent(t, x):
+    return t
+
+def convert_y_to_x(y):
+    X0 = 1.0
+    sigma = 0.4
+    temp1 = 27*X0**3+81*X0+162*sigma*y
+    temp2 = ((temp1**2+2916)**0.5 + temp1)**(1.0/3) / (3*2**(1.0/3))
+    x = temp2 - 1.0/temp2
+    return x
 
 #################################
 ## Diffusion Coefficients
@@ -80,4 +101,5 @@ def sigma_deriv_from_paper(t, x):
     """
     sigma = 0.4
     return -4*x*sigma/(1+x**2)**2
-    
+
+

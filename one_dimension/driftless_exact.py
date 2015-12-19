@@ -128,7 +128,11 @@ class Driftless_Exact:
 
         # N_T is the number of arrivals before T (so the last arrival does not count towards N_T)
         N_T = len(self.poisson.dt) - 2
-        return 0.5 * self.psi(g) * (1 + self.get_antithetic_malliavin() / self.malliavin_weight(N_T))
+        if N_T > 0:
+            last_step = g(self.Xhat[-1]) - g(self.Xhat[-2])
+            return 0.5 * self.psi(g) * (1 + self.get_antithetic_malliavin() / self.malliavin_weight(N_T) * (g(self.X_bar) - g(self.Xhat[-2])) / (last_step if last_step != 0 else 1) )
+        else:
+            return self.psi(g)
         
         
     def plot_paths(self, paths_to_plot=100):
@@ -146,6 +150,7 @@ class Driftless_Exact:
         Args:
             g_maker (funcion): A function that returns a function f(x) = g(x,K)
             strikes (np.array): An array of strikes to pass in to g_maker
+            plot_paths (Optional[boolean]): Should the paths be plotted. Defaults to False
         Returns:
             np.array: A array of E[g(X_T)] for the range of strikes
         """
@@ -162,4 +167,26 @@ class Driftless_Exact:
             plt.ylabel('Xhat_t')
             plt.show()
         return totals/self.num_of_paths
+
+if __name__ == '__main__':
+    import coefficients
+    import payoffs
+    
+    num_of_paths_exact = 1
+    beta = 0.2
+    T = 1.0
+    X0 = 1.0
+    strikes = np.arange(0.6, 1.6, 0.1)
+    strikes = [0.6]
+    sigma = coefficients.sigma_from_paper
+    sigma_deriv = coefficients.sigma_deriv_from_paper
+    exact51_process = Driftless_Exact(num_of_paths_exact, beta, sigma, sigma_deriv, T, X0)
+    
+    prices = exact51_process.run_monte_carlo(lambda K: payoffs.make_call_payoff(K), strikes, plot_paths=False)
+    implied_vols = [None]*len(strikes)
+
+    # Print a table of the results
+    print "K, price, implied vol"
+    for K, price, implied_vol in zip(strikes, prices, implied_vols):
+        print K, price, implied_vol
 

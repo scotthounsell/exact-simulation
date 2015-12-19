@@ -26,7 +26,7 @@ def calculate_implied_vol(S, K, T, r, q, price):
     initial_guess = 0.25
     return newton(lambda sigma: call_black_scholes(S, K, T, sigma, r, q) - price, x0=initial_guess, fprime=lambda sigma: vega(S, K, T, sigma, r, q))\
 
-def calculate_smile(S, T, r, q, strikes, prices, plot_smile=False, title=''):
+def calculate_smile(S, T, r, q, strikes, prices, plot_smile=False, label=''):
     """
     Calculates the implied volatility a range of strikes.
     Can plot the implied volatility smile.
@@ -45,11 +45,9 @@ def calculate_smile(S, T, r, q, strikes, prices, plot_smile=False, title=''):
     implied_vols = [calculate_implied_vol(S, K, T, r, q, price) for K, price in zip(strikes, prices)]
       
     if plot_smile:
-        plt.plot(strikes, implied_vols)
-        plt.title(title)
+        plt.plot(strikes, implied_vols, label=label)
         plt.xlabel('K')
         plt.ylabel('Implied Volatility')
-        plt.show()
+        #plt.show()
     
     return implied_vols
-    

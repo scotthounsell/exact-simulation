@@ -10,7 +10,7 @@ class Drifted_Exact:
     This process has a general drift process and a constant diffusion coefficient.
     This can be used to simulate the payoff of an option and calculate the implied volatility smile.
     """
-    def __init__(self, num_of_paths, beta, mu, sigma0=1, T=1, X0=0):
+    def __init__(self, num_of_paths, beta, mu, sigma0=1, T=1, X0=0, convert_y_to_x_func=lambda y: y):
         """
         Args:
             num_of_paths (int): The number of Monte Carlo paths
@@ -19,6 +19,7 @@ class Drifted_Exact:
             sigma0 (Optional[float]): The constant diffusion coefficient. Defaults to 1
             T (Optional[float]): Time, in years, to simulate process.  Defaults to 1.
             X0 (Optional[float]): Initial value for the estimator process, Xhat. Defaults to 0.
+            convert_y_to_x_func (Optional[function]): A function to convert Y_T to X_T. Defaults to X_T = Y_T
         Raises:
             TypeError: If mu is not a function.
         """
@@ -30,6 +31,7 @@ class Drifted_Exact:
         self.sigma0 = float(sigma0)
         self.T = float(T)
         self.X0 = float(X0)
+        self.convert_y_to_x_func = convert_y_to_x_func
         
         self.plotted_paths = 0
         
@@ -45,6 +47,9 @@ class Drifted_Exact:
         for k in xrange(len(self.poisson.t)-1):
             self.Xhat[k+1] = self.Xhat[k] + self.mu(self.poisson.t[k], self.Xhat[k])*self.poisson.dt[k+1] + self.sigma0*self.dW[k+1]
             
+        for k, X_i in enumerate(self.Xhat):
+            self.Xhat[k] = self.convert_y_to_x_func(X_i)
+            
     def malliavin_weight(self, k):
         """
         Generate the Malliavin weights. Needed to calculate psi.
@@ -52,7 +57,7 @@ class Drifted_Exact:
         Args:
             k (int): The subscript index to identify which weight to calculate.
         """
-        return self.mu(self.poisson.t[k], self.Xhat[k]) - self.mu(self.poisson.t[k-1], self.Xhat[k-1]) * self.dW[k+1] / (self.sigma0*self.poisson.dt[k+1])
+        return (self.mu(self.poisson.t[k], self.Xhat[k]) - self.mu(self.poisson.t[k-1], self.Xhat[k-1])) * self.dW[k+1] / (self.sigma0*self.poisson.dt[k+1])
         
     def generate_psi_g_multiple(self):
         """
@@ -99,6 +104,7 @@ class Drifted_Exact:
         Args:
             g_maker (funcion): A function that returns a function f(x) = g(x,K)
             strikes (np.array): An array of strikes to pass in to g_maker
+            plot_paths (Optional[boolean]): Should the paths be plotted. Defaults to False
         Returns:
             np.array: A array of E[g(X_T)] for the range of strikes
         """

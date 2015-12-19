@@ -40,22 +40,26 @@ class General_Euler:
         self.X = np.empty((self.num_of_paths, self.num_of_steps+1))
         self.X[:,0] = self.X0
         for t in xrange(self.num_of_steps):
-            self.X[:,t+1] = self.X[:,t] + self.mu(t, self.X[:,t]) * dt + self.sigma(t, self.X[:,t]) * self.dW[:,t]
+            self.X[:,t+1] = self.X[:,t] + self.mu(t*dt, self.X[:,t]) * dt + self.sigma(t*dt, self.X[:,t]) * self.dW[:,t]
     
-    def run_monte_carlo(self, g_maker, strikes, plot_paths=False):
+    def run_monte_carlo(self, g_maker, strikes, plot_paths=False, convert_y_to_x_func=lambda y: y):
         """
         Runs the Monte Carlo simulation to calculate E[g(X_T)] for different strikes.
         
         Args:
             g_maker (funcion): A function that returns a function f(x) = g(x,K)
             strikes (np.array): An array of strikes to pass in to g_maker
+            plot_paths (Optional[boolean]): Should the paths be plotted. Defaults to False
+            convert_y_to_x_func (Optional[function]): A function to convert Y_T to X_T. Defaults to X_T = Y_T
         Returns:
             (np.array): A array of E[g(X_T)] for the range of strikes
         """
         self.simulate_process()
         if plot_paths: self.plot_paths()
         
-        return np.array([np.mean(g_maker(K)(self.X[:,-1])) for K in strikes])
+        X_Ts = [convert_y_to_x_func(X_T) for X_T in self.X[:,-1]]
+        
+        return np.array([np.mean(g_maker(K)(X_Ts)) for K in strikes])
 
     def plot_paths(self, paths_to_plot=100):
         """

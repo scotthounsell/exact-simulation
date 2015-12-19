@@ -6,17 +6,14 @@ class Poisson_Process():
     """
     def __init__(self, beta, T):
         """
-        Constructor. Sets two arrays:
-        self.dt is the waiting times between arrivals (exponential random variables). 
-            The last waiting time is shrunk so that its arrival coincides with T.
-            A 0 is inserted in the beginning so that the indices match the reference paper.
-        self.t is the arrival times. Note that a 0 is inserted to the front of the array. Also, the last arrival time will always be T.
+        param beta: Parameter for exponential random variable.
+        param T: Expiry. The Poisson process is generated up to this point.
         
-        Args:
-            beta (float): Parameter for exponential random variable.
-            T (float): Expiry. The Poisson process is generated up to this point.
+        Constructor. Sets two arrays:
+        self.dt is the waiting times between arrivals (exponential random variables). The last waiting time is shrunk so that its arrival coincides with T.
+        self.t is the arrival times. Note that a 0 is inserted to the front of the array. Also, the last arrival time will always be T.
         """
-        self.dt = [0]
+        self.dt = []
         
         # Generate exponential random variables until their sum adds to more than T
         total = 0
@@ -28,8 +25,8 @@ class Poisson_Process():
         # Change the last exponential so that the sum of all exponentials equals T
         self.dt[-1] -= total - T
 
-        # self.t is the cumulative sum of the exponentials
-        self.t = np.cumsum(self.dt)
+        # self.t is the cumulative sum of the exponentials with a 0 in front
+        self.t = np.insert(np.cumsum(self.dt),0,0)
 
 
 # An example to show how the class works. Keep this commented out unless testing the class.
