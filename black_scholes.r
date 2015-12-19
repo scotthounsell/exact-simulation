@@ -35,14 +35,14 @@ bisection <- function(f,a,b,tol_approx=1e-8,tol_consec=1e-8){
     xL <- a;    xR <- b;    xM <- NA
     while (abs(xR-xL) > tol_consec || max(abs(c(f(xL),f(xR)))) > tol_approx){
         xM <- .5 * (xL + xR)
-        ifelse(f(xL)*f(xM) < 0, xR <- xM, xL <- xM) # If sign changes in [xL,xM], make xM the new right bound, otherwise left
+        if(f(xL)*f(xM) < 0) xR <- xM else xL <- xM # If sign changes in [xL,xM], make xM the new right bound, otherwise left
     }
     return(xM)
 }
 
 call_black_scholes <- function(S, K, T, sigma, r, q){
     # Returns the Black-Scholes value of a vanilla call option.
-    d1 <- (log(S/K) + (r - q + 0.5*sigma^2)*T) / (sigma*sqrt(T))
+    d1 <- (log(S/K) + (r - q + 0.5*sigma*sigma)*T) / (sigma*sqrt(T))
     return(S*exp(-q*T)*pnorm(d1) - K*exp(-r*T)*pnorm(d1 - sigma*sqrt(T)))
 }
 
@@ -51,12 +51,12 @@ calculate_implied_vol <- function(S, K, T, r, q, price){
     vega <- function(sigma){
         # Vega of a vanilla option in the Black-Scholes framework.
         # This is plugged into Newton's method as the first derivative.
-        d1 <- (log(S/K) + (r - q + 0.5*sigma^2)*T) / (sigma*sqrt(T))
+        d1 <- (log(S/K) + (r - q + 0.5*sigma*sigma)*T) / (sigma*sqrt(T))
         return(S*exp(-q*T)*sqrt(T)*dnorm(d1))
     }
     # uniroot(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, interval=c(1e-6,6))
-    newton(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, vega, x0=.25)
-    # bisection(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, a=1e-4, b=1)
+    # newton(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, vega, x0=.25)
+    bisection(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, a=1e-4, b=1.5)
 }
 
 calculate_smile <- function(S, T, r, q, strikes, prices, plot_smile=FALSE, title=''){
@@ -72,8 +72,9 @@ calculate_smile <- function(S, T, r, q, strikes, prices, plot_smile=FALSE, title
     #     prices (array-like): Prices for range of strikes
     #     plot_smile (logical): Should the function plot the implied volatility smile
     # Returns:
-    #     list: The list of implied volatilities for the range of strike prices
-    implied_vols <- sapply(1:length(strikes), function(i) calculate_implied_vol(S, strikes[i], T, r, q, prices[i]))
+    #     (vector): The vector of implied volatilities for the range of strike prices
+    # implied_vols <- vapply(1:length(strikes), function(i) calculate_implied_vol(S, strikes[i], T, r, q, prices[i]), FUN.VALUE=1)
+    implied_vols <- mapply(function(K,V) calculate_implied_vol(S, K, T, r, q, V), strikes, prices)
     if (plot_smile) plot(strikes, implied_vols, main=title, xlab='K', ylab='Implied Volatility', type='l', col='blue', las=1)
     return(implied_vols)
 }

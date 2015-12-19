@@ -1,4 +1,4 @@
-General_Euler <- function(num_of_paths, num_of_steps, mu, sigma, T=1, X0=0, convert_y_to_x=function(y) y, convert_x_to_y=function(x) x){
+General_Euler <- function(num_of_paths, num_of_steps, mu, sigma, Texp=1, X0=0, convert_y_to_x=function(y) y, convert_x_to_y=function(x) x){
     # Simulate a 1-dimensional process using Monte Carlo with the standard Euler scheme.
     # This can be used to simulate the payoff of an option and calculate the implied volatility smile.
     #
@@ -7,7 +7,7 @@ General_Euler <- function(num_of_paths, num_of_steps, mu, sigma, T=1, X0=0, conv
     #     num_of_steps (integer): The number of steps in each Monte Carlo path
     #     mu (function): The drift coefficient, a function of t (numeric) and X (array-like) returning a scalar
     #     sigma (function): The diffusion coefficient, a function of t (numeric) and X (array-like) returning a scalar
-    #     T (Optional[numeric]): Time, in years, to simulate process.  Defaults to 1.
+    #     Texp (Optional[numeric]): Time, in years, to simulate process.  Defaults to 1.
     #     X0 (Optional[numeric]): Initial value for the estimator process, X. Defaults to 0.
     #     convert_y_to_x (Optional[function]): A function to convert Y_t to X_t. Defaults to X_t <- Y_t
     #     convert_x_to_y (Optional[function]): A function to convert X_t to Y_t. Defaults to Y_t <- X_t
@@ -19,7 +19,8 @@ General_Euler <- function(num_of_paths, num_of_steps, mu, sigma, T=1, X0=0, conv
     if (!is.function(mu)) stop('mu must be a function')
     if (!is.function(sigma)) stop('sigma must be a function')
 
-    dt <- T / num_of_steps
+    dt <- Texp / num_of_steps
+    Y0 <- convert_x_to_y(X0)
 
     run_monte_carlo <- function(g_maker, strikes, num_paths_to_plot=FALSE){
         # Runs the Monte Carlo simulation to calculate E[g(X_T)] for different strikes.
@@ -37,24 +38,23 @@ General_Euler <- function(num_of_paths, num_of_steps, mu, sigma, T=1, X0=0, conv
         dW <- matrix(rnorm(num_of_paths*num_of_steps,sd=sqrt(dt)), nrow=num_of_paths, ncol=num_of_steps)
 
         # Generate the process Y using the Lamperti transform version of the process X
-        Y0 <- convert_x_to_y(X0)
-        Y <- cbind(Y0, matrix(nrow=num_of_paths, ncol=num_of_steps))
-        for (t in 1:num_of_steps)
-            Y[,t+1] <- Y[,t] + mu((t-1)*dt, Y[,t]) * dt + sigma((t-1)*dt, Y[,t]) * dW[,t]
+        Y <- matrix(Y0, nrow=num_of_paths, ncol=num_of_steps+1)
 
-        X <- convert_y_to_x(Y) # Convert the process Y back into the process X
+        for (i in 1:num_of_steps){
+            t <- (i-1)*dt
+            Y[,i+1] <- Y[,i] + mu(t, Y[,i]) * dt + sigma(t, Y[,i]) * dW[,i]
+        }
 
         if (num_paths_to_plot!=FALSE){ # Plots the first num_paths_to_plot paths.
             if (num_paths_to_plot==TRUE) num_paths_to_plot <- 100 # Default value
             num_paths_to_plot <- min(num_paths_to_plot, num_of_paths)
             #matplot plots columns so we transpose
-            matplot(t(X[1:num_paths_to_plot,]), main=sprintf('Generated paths (first %i paths) - Euler scheme',num_paths_to_plot), xlab='t', ylab='X_t', type='l')
+            matplot(t(convert_y_to_x(Y[1:num_paths_to_plot,])), main=sprintf('Generated paths (first %i paths) - Euler scheme',num_paths_to_plot), xlab='t', ylab='X_t', type='l', lty=1)
         }
 
-        X_Ts <- X[,ncol(X)] # Final prices for each path
+        X_Ts <- convert_y_to_x(Y[,ncol(Y)]) # Final prices for each path
 
-        # return np.array([np.mean(g_maker(K)(X_Ts)) for K in strikes]) # For reference
-        return(sapply(strikes, function(K) mean(g_maker(K)(X_Ts))))
+        return(vapply(strikes, function(K) mean(g_maker(K)(X_Ts)), FUN.VALUE=1))
     }
     return(list(run_monte_carlo=run_monte_carlo)) # Return a list holding the function so we can call it OO style
 }
