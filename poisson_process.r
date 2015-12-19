@@ -11,10 +11,10 @@ Poisson_Process <- function(beta, Texp){
 
     # Generate exponential random variables until their sum adds to more than Texp
     total <- dt <- 0
-    while (total <= Texp){
-        random_exponential <- rexp(1,beta)
+    while (total < Texp){
+        random_exponential <- rexp(1, beta)
         total <- total + random_exponential
-        dt <- c(dt,random_exponential)
+        dt <- c(dt, random_exponential)
     }
     # Change the last exponential so that the sum of all exponentials equals Texp
     dt[length(dt)] <- dt[length(dt)] - (total - Texp)

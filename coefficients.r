@@ -38,7 +38,7 @@ make_mean_reverting_coefficient <- function(reversion_rate, long_term_mean)
     #     (function(anything, numeric)): A function that returns -reversion_rate(x-long_term_mean)
     function(t,x) -reversion_rate*(x - long_term_mean)
 
-mu_from_paper <- function(t, y){
+mu_1d_from_paper <- function(t, y){
     # The drift coefficient. Implementing equation 5.2 from the paper.
     #
     # Args:
@@ -49,19 +49,6 @@ mu_from_paper <- function(t, y){
     denom <- 1 + x*x
     return(2*sigma*x/(denom*denom))
 }
-
-make_mu_section_52_euler <- function(d)
-    # Returns the drift coefficient function described in section 5.2 from the paper.
-    #
-    # Args:
-    #     d (int): The current dimension
-    function(t, x){
-        # Args:
-        #     t (numeric): The current time
-        #     x (matrix): The ending value of the process for each dimension and path
-        x <- matrix(x)
-        x[d,]*0.1*(sqrt(x[d,]) - 1)
-    }
 
 convert_y_to_x_1d <- function(y){
     # Converts Y_t to X_t in equation 5.2
@@ -84,6 +71,19 @@ convert_x_to_y_1d <- function(x){
     sigma <- .4
     return((x-X0 + (x*x*x - X0*X0*X0)/3) / (2*sigma))
 }
+
+make_mu_section_52_euler <- function(d)
+    # Returns the drift coefficient function described in section 5.2 from the paper.
+    #
+    # Args:
+    #     d (int): The current dimension
+    function(t, x){
+        # Args:
+        #     t (numeric): The current time
+        #     x (matrix): The current value of the process across all paths for this dimension
+        x <- matrix(x)
+        x[d,]*0.1*(sqrt(x[d,]) - 1)
+    }
 
 make_mu_from_paper_multi_dimension_lamperti <- function(d)
     # Returns the drift coefficient function of the lamperti transform
@@ -129,12 +129,13 @@ make_mu_heston_variance <- function(lambda, vbar)
     # Args:
     #     lambda (numeric): The mean reversion rate
     #     vbar (numeric): The long term mean
-    function(t, v)
+    function(t, v){
         # Args:
         #     t (numeric): The current time
         #     v (vector or numeric): The current variance
-        # if (any(v<=0)) print('(mu) v went <=0 !!!') # FIXME
+        if (any(v<=0)) print('(mu) v went <=0 !!!') # FIXME
         return(-lambda*((v>0)*v - vbar)) # full truncation
+    }
 
 make_mu_heston_variance_lamperti <- function(lambda, vbar, eta, v0){
     # Returns the drift coefficient function of the lamperti transform
@@ -150,9 +151,8 @@ make_mu_heston_variance_lamperti <- function(lambda, vbar, eta, v0){
         # Args:
         #     t (numeric): The current time
         #     v (vector or numeric): The current variance
-        #convert_y_to_x_heston_variance <- make_convert_y_to_x_heston_variance(eta, v0)
         v <- convert_y_to_x_heston_variance(y)
-        # if (any(v<=0)) print('(mu L) v went <=0 !!!') # FIXME
+        if (any(v<=0)) print('(mu L) v went <=0 !!!') # FIXME
         v <- (v>0)*v # full truncation
         return((-lambda*(v-vbar)/eta - 0.25*eta) / sqrt(v))
     }
@@ -211,19 +211,21 @@ make_convert_x_to_y_black_scholes <- function(sigma, X0)
         # Returns:
         #     (matrix or vector or numeric): Values of Y_t corresponding to each X_t
         return(log(x/X0)/sigma)
-
-make_mu_sin <- function(a, n)
+        
+make_mu_sin <- function(a, k, phi, b)
     # Returns the drift coefficient function of the sin process
-    # dX_t = a*sin(n*pi*x)*dt + dW_t
+    # dX_t = (b + a*sin(n*pi*x))*dt + sigma*dW_t
     #
     # Args:
     #     a (numeric): The amplitude of the oscillatory process
     #     n (numeric): The frequency of the oscillatory process
+    #     b (numeric): The drift of the sine process
     function(t, x)
         # Args:
         #     t (numeric): The current time
         #     x (matrix): The location of the process
-        return(a*sin(n*pi*x))
+        return(a*(sin(k*t + phi) + b))
+
 
 #################################
 ## Diffusion Coefficients
@@ -258,7 +260,7 @@ make_sigma_section_52_euler <- function(d)
     function(t, x){
         # Args:
         #     t (numeric): The current time
-        #     x (matrix): The ending value of the process for each dimension and path
+        #     x (matrix): The current value of the process across all paths for this dimension
         x <- matrix(x)
         return(0.5*x[d,])
     }
@@ -268,9 +270,10 @@ make_sigma_cir <- function(eta)
     #
     # Args:
     #     eta (numeric): The diffusion scaling parameter.
-    function(t, x)
+    function(t, x){
         # Args:
         #     t (numeric): The current time
         #     x (matrix): The ending value of the process for each dimension and path
-        # if (any(x<=0)) print('(CIR) x went <=0 !!!') # FIXME
+        if (any(x<=0)) print('(CIR) x went <=0 !!!') # FIXME
         return(eta*sqrt((x>0)*x)) # full truncation
+    }

@@ -1,4 +1,4 @@
-source("poisson_process.r")
+source('poisson_process.r')
 
 Driftless_Exact <- function(num_of_paths, beta, sigma, sigma_deriv, Texp=1, X0=0){
     # Simulate a 1-dimensional process using Monte Carlo with the exact method described in section 4 of the reference paper.
@@ -25,7 +25,7 @@ Driftless_Exact <- function(num_of_paths, beta, sigma, sigma_deriv, Texp=1, X0=0
         # Args:
         #     g_maker (function): A function that returns a function f(x) <- g(x,K)
         #     strikes (array-like): An array of strikes to pass in to g_maker
-        #     num_paths_to_plot (Optional[integer or logical]): How many paths should be plotted. Defaults to FALSE.  If TRUE, defaults to 100.
+        #     num_paths_to_plot (Optional[integer or logical]): How many paths should be plotted. Defaults to FALSE (no plot).  If TRUE, defaults to 100.
         # Returns:
         #     (array-like): An array of E[g(X_T)] for the range of strikes
 
@@ -125,10 +125,10 @@ Driftless_Exact <- function(num_of_paths, beta, sigma, sigma_deriv, Texp=1, X0=0
 
             # Calculates the product from k=1..N_T of malliavin_weight(k)
             # Using a default of 1 to protect against the edge case of no arrivals before T
-            product <- if(N_T>0) prod(malliavin_weight(2:(1+N_T))) else 1
+            malliavin_product <- if(N_T>0) prod(malliavin_weight(2:(1+N_T))) else 1
 
             # g_multiple represents the portion of psi that is common across g functions of different strikes
-            g_multiple <- ebT * beta^-N_T * product
+            g_multiple <- ebT * beta^-N_T * malliavin_product
 
             # totals <- totals + vapply(strikes, function(K) psi_average(g_maker(K)), FUN.VALUE=1)
             totals <- totals + psi_average(g_maker(strikes))

@@ -1,4 +1,4 @@
-newton <- function(f,fprime,x0,tol_approx=1e-8,tol_consec=1e-8){
+newton <- function(f, fprime, x0, tol_approx=1e-8, tol_consec=1e-8){
     # Solves a given equation for its roots using Newton's Method given its derivative
     # and an initial guess.  Also takes in function value tolerance and consecutive value tolerance.
     #
@@ -19,7 +19,7 @@ newton <- function(f,fprime,x0,tol_approx=1e-8,tol_consec=1e-8){
     return(x1)
 }
 
-bisection <- function(f,a,b,tol_approx=1e-8,tol_consec=1e-8){
+bisection <- function(f, a, b, tol_approx=1e-8, tol_consec=1e-8){
     # Solves a given equation for its roots using Bisection Method given an initial
     # interval.  Also takes in function value tolerance and consecutive value tolerance.
     #
@@ -46,7 +46,7 @@ call_black_scholes <- function(S, K, T, sigma, r, q){
     return(S*exp(-q*T)*pnorm(d1) - K*exp(-r*T)*pnorm(d1 - sigma*sqrt(T)))
 }
 
-calculate_implied_vol <- function(S, K, T, r, q, price){
+calculate_implied_vol <- function(S, K, T, r, q, price, solver='newton'){
     # Returns the Black-Scholes implied volatility.
     vega <- function(sigma){
         # Vega of a vanilla option in the Black-Scholes framework.
@@ -54,12 +54,18 @@ calculate_implied_vol <- function(S, K, T, r, q, price){
         d1 <- (log(S/K) + (r - q + 0.5*sigma*sigma)*T) / (sigma*sqrt(T))
         return(S*exp(-q*T)*sqrt(T)*dnorm(d1))
     }
-    # uniroot(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, interval=c(1e-6,6))
-    # newton(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, vega, x0=.25)
-    bisection(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, a=1e-4, b=1.5)
+
+    if (solver == 'newton') {
+        newton(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, vega, x0=0.25)
+    } else if (solver == 'bisection'){
+        bisection(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, a=1e-4, b=1.5)
+    } else {
+        uniroot(function(sigma) call_black_scholes(S, K, T, sigma, r, q) - price, interval=c(1e-4,1.5))
+    }
+    
 }
 
-calculate_smile <- function(S, T, r, q, strikes, prices, plot_smile=FALSE, title=''){
+calculate_smile <- function(S, T, r, q, strikes, prices, plot_smile=FALSE, plot_title='', solver='newton'){
     # Calculates the implied volatility for a range of strikes.
     # Can plot the implied volatility smile.
     #
@@ -73,8 +79,8 @@ calculate_smile <- function(S, T, r, q, strikes, prices, plot_smile=FALSE, title
     #     plot_smile (logical): Should the function plot the implied volatility smile
     # Returns:
     #     (vector): The vector of implied volatilities for the range of strike prices
-    # implied_vols <- vapply(1:length(strikes), function(i) calculate_implied_vol(S, strikes[i], T, r, q, prices[i]), FUN.VALUE=1)
-    implied_vols <- mapply(function(K,V) calculate_implied_vol(S, K, T, r, q, V), strikes, prices)
-    if (plot_smile) plot(strikes, implied_vols, main=title, xlab='K', ylab='Implied Volatility', type='l', col='blue', las=1)
+    
+    implied_vols <- mapply(function(K,V) calculate_implied_vol(S, K, T, r, q, V, solver=solver), strikes, prices)
+    if (plot_smile) plot(strikes, implied_vols, main=plot_title, xlab='K', ylab='Implied Volatility', type='l', col='blue', las=1)
     return(implied_vols)
 }

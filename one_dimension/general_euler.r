@@ -28,7 +28,7 @@ General_Euler <- function(num_of_paths, num_of_steps, mu, sigma, Texp=1, X0=0, c
         # Args:
         #     g_maker (function): A function that returns a function f(x) <- g(x,K)
         #     strikes (array-like): An array of strikes to pass in to g_maker
-        #     num_paths_to_plot (Optional[integer or logical]): How many paths should be plotted. Defaults to FALSE.  If TRUE, defaults to 100.
+        #     num_paths_to_plot (Optional[integer or logical]): How many paths should be plotted. Defaults to FALSE (no plot). If TRUE, defaults to 100.
         # Returns:
         #     (array-like): A array of E[g(X_T)] for the range of strikes
 
@@ -38,23 +38,36 @@ General_Euler <- function(num_of_paths, num_of_steps, mu, sigma, Texp=1, X0=0, c
         dW <- matrix(rnorm(num_of_paths*num_of_steps,sd=sqrt(dt)), nrow=num_of_paths, ncol=num_of_steps)
 
         # Generate the process Y using the Lamperti transform version of the process X
+        
+        # Initialize Y0. More efficient to just initialize all values as Y0
         Y <- matrix(Y0, nrow=num_of_paths, ncol=num_of_steps+1)
 
+        # Step through time
         for (i in 1:num_of_steps){
             t <- (i-1)*dt
             Y[,i+1] <- Y[,i] + mu(t, Y[,i]) * dt + sigma(t, Y[,i]) * dW[,i]
         }
 
-        if (num_paths_to_plot!=FALSE){ # Plots the first num_paths_to_plot paths.
-            if (num_paths_to_plot==TRUE) num_paths_to_plot <- 100 # Default value
+        # Plotting
+        if (num_paths_to_plot != FALSE){ # Plots the first num_paths_to_plot paths.
+            if (num_paths_to_plot == TRUE) num_paths_to_plot <- 100 # Default value
             num_paths_to_plot <- min(num_paths_to_plot, num_of_paths)
             #matplot plots columns so we transpose
-            matplot(t(convert_y_to_x(Y[1:num_paths_to_plot,])), main=sprintf('Generated paths (first %i paths) - Euler scheme',num_paths_to_plot), xlab='t', ylab='X_t', type='l', lty=1)
+            matplot(seq(0, Texp, Texp/num_of_steps), t(convert_y_to_x(Y[1:num_paths_to_plot,])), main=sprintf('Generated paths (first %i paths) - Euler scheme',num_paths_to_plot), xlab='t', ylab='X_t', type='l', lty=1)
         }
+        
+        # Final prices for each path (Undo the Lamperti transform)
+        X_Ts <- convert_y_to_x(Y[,ncol(Y)])
 
-        X_Ts <- convert_y_to_x(Y[,ncol(Y)]) # Final prices for each path
+        # Returns the mean of psi across all paths for each strike
+        # return(vapply(strikes, function(K) mean(g_maker(K)(X_Ts)), FUN.VALUE=1))
 
-        return(vapply(strikes, function(K) mean(g_maker(K)(X_Ts)), FUN.VALUE=1))
+        # Calculates prices for each path by row, each strike by column
+        price_matrix <- vapply(strikes, function(K) g_maker(K)(X_Ts), FUN.VALUE=numeric(num_of_paths))
+        print(data.frame(K=strikes, Variance=diag(var(price_matrix)))) # Diagonals of cov mtx are column variances
+        return(colMeans(price_matrix))
     }
-    return(list(run_monte_carlo=run_monte_carlo)) # Return a list holding the function so we can call it OO style
+    
+    # Return a list holding the function so we can call it object oriented style
+    return(list(run_monte_carlo=run_monte_carlo))
 }

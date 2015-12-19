@@ -71,53 +71,35 @@ Drifted_Exact_Multi_D <- function(num_of_paths, beta, mu, sigma0=NA, cov_matrix=
             # Generate the time steps for the Xhat process
             dt <- Poisson_Process(beta, Texp)
             t <- cumsum(dt)
-            #poisson <- data.frame(dt=c(0, 0.7971959, 0.2028041), t=c(0, 0.7971959, 1))
-            #print(poisson)
-            N_T <- length(t) - 2 # N_T is the # of default events (so last arrival and starting time don't count towards N_T)
-            # cat('\nN_T',N_T)
+            N_T <- length(t) - 2 # N_T is the number of default events (so last arrival and starting time don't count towards N_T)
 
             # Generate dW for each dimension d. dW will be a d-by-length(t) matrix
             dW <- matrix(nrow=d, ncol=length(dt))
             for (i in 1:length(dt))
                 dW[,i] <- mvrnorm(n=1, mu=rep(0, d), Sigma=dt[i]*cov_matrix)
-            # cat('\n\ndW\n')
-            # print(dW)
 
             # Generate the process Yhat using the exact method on the Lamperti transform version of the process X
-            # cat('\n\nY0\n')
-            # print(Y0)
             Yhat <- cbind(Y0, matrix(nrow=d, ncol=length(t)-1))
             for (k in 1:(length(t)-1)){
-                for (di in 1:d){
+                for (di in 1:d)
                     Yhat[di,k+1] <- Yhat[di,k] + mu[[di]](t[k], Yhat[,k])*dt[k+1] + sigma0[di,di]*dW[di,k+1]
-                }
             }
-            # cat('\n\nYhat\n')
-            # print(Yhat)
 
             # Convert the process Yhat back into the process Xhat
             Xhat <- convert_y_to_x(Yhat)
 
-            # cat('\n\nXhat\n')
-            # print(Xhat)
-
             # Calculate the product from k=1..N_T of malliavin_weight(k)
             # If there are no arrivals before T, set the product to 1
-            product <- if(N_T>0) prod(sapply(2:(1+N_T), malliavin_weight)) else 1
+            malliavin_product <- if(N_T>0) prod(sapply(2:(1+N_T), malliavin_weight)) else 1
 
-            # cat('\n\nproduct\n')
-            # print(product)
-
-            g_multiple <- ebT * beta^-N_T * product
-            # cat('\n\ng_multiple\n')
-            # print(g_multiple)
+            g_multiple <- ebT * beta^-N_T * malliavin_product
 
             # For each strike, get the value of psi and add that to totals
             totals <- totals + sapply(strikes, function(K) psi(g_maker(K)))
-            # cat('\n\ntotals\n')
-            # print(totals)
         }
         return(totals/num_of_paths)
     }
-    return(list(run_monte_carlo=run_monte_carlo))# Return a list holding the function so we can call it oop style
+    
+    # Return a list holding the function so we can call it oop style
+    return(list(run_monte_carlo=run_monte_carlo))
 }

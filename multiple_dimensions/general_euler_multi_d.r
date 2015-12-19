@@ -50,8 +50,9 @@ General_Euler_Multi_D <- function(num_of_paths, num_of_steps, mu, sigma, cov_mat
         X <- array(rep(NA, num_dim*(num_of_steps+1)*num_of_paths), c(num_dim, num_of_steps+1, num_of_paths))
         X[,1,] <- X0
         for (t in 1:num_of_steps)
-            # for (d in 1:num_dim)
-            #     X[d,t+1,] <- X[d,t,] + mu[[d]]((t-1)*dt, X[,t,]) * dt + sigma[[d]]((t-1)*dt, X[,t,]) * dW[d,t,]
+            #for (d in 1:num_dim)
+            #    X[d,t+1,] <- X[d,t,] + mu[[d]]((t-1)*dt, X[,t,]) * dt + sigma[[d]]((t-1)*dt, X[,t,]) * dW[d,t,]
+            
             # Hard code for Section 5.2
             X[,t+1,] <- X[,t,]*exp(0.5*dW[,t,] + (0.1*(sqrt(X[,t,])-1) - 1/8)*dt)
 
